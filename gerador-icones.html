@@ -1,1 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0C2D4D">
+<title>Gerador de Ícones · NEGRET'S PRO MASTER</title>
+<style>
+  :root{ --navy:#0C2D4D; --navy2:#123A61; --bg:#EEF4FA; --line:#D8E3EF; --ink:#13293D;
+         --muted:#5C7387; --r:20px; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ font-family:'Segoe UI', system-ui, Arial, sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; }
+  header{ background:var(--navy); color:#fff; padding:16px 20px; display:flex; align-items:center; gap:12px; }
+  .badge{ width:42px; height:42px; border-radius:13px; background:#fff; color:var(--navy);
+          display:grid; place-items:center; font-weight:800; font-size:19px; }
+  header h1{ font-size:17px; } header p{ font-size:12px; color:#9FBDDA; }
+  main{ max-width:720px; margin:0 auto; padding:20px 16px 60px; }
+  .card{ background:#fff; border:1px solid var(--line); border-radius:var(--r); padding:20px;
+         box-shadow:0 10px 30px rgba(12,45,77,.08); margin-bottom:16px; }
+  h2{ font-size:15px; color:var(--navy); margin-bottom:10px; }
+  .lead{ font-size:13.5px; color:var(--muted); line-height:1.55; }
+  .big{ display:flex; gap:18px; align-items:center; flex-wrap:wrap; }
+  .big canvas{ width:160px; height:160px; border-radius:14px; border:1px solid var(--line); flex:none; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:14px; }
+  .out{ text-align:center; }
+  .out canvas{ width:104px; height:104px; border-radius:8px; border:1px solid var(--line);
+               display:block; margin:0 auto 8px; }
+  .out b{ display:block; font-size:12px; color:var(--navy); word-break:break-all; }
+  .out span{ font-size:11px; color:var(--muted); display:block; margin:2px 0 8px; }
+  .btn{ height:48px; padding:0 18px; border-radius:12px; border:none; cursor:pointer;
+        font-weight:700; font-size:14px; background:var(--navy); color:#fff;
+        display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+  .btn:hover{ background:var(--navy2); }
+  .btn.small{ height:40px; font-size:12.5px; padding:0 14px; }
+  .btn.block{ width:100%; }
+  label.chk{ display:flex; gap:8px; align-items:center; font-size:13px; color:var(--muted); margin-top:14px; }
+  #status{ font-size:13px; margin-top:12px; min-height:18px; }
+  .ok{ color:#1B7A43; font-weight:700; }
+  ol{ margin:6px 0 0 18px; font-size:13.5px; color:var(--muted); line-height:1.8; }
+  code{ background:var(--bg); padding:2px 6px; border-radius:6px; font-size:12px; color:var(--navy); }
+</style>
+</head>
+<body>
 
+<header>
+  <div class="badge">N</div>
+  <div><h1>Gerador de Ícones</h1><p>NEGRET'S PRO MASTER · PWA</p></div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Prévia da arte</h2>
+    <div class="big">
+      <canvas id="big" width="512" height="512"></canvas>
+      <p class="lead">Casa, sol, árvore e grama sobre o azul <code>#0C2D4D</code> — igual à referência.
+      Gera os 4 PNGs com os <b>nomes exatos</b> que o <code>manifest.json</code> e o
+      <code>index.html</code> já usam. Funciona offline e direto do duplo clique.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Arquivos para baixar</h2>
+    <div class="grid" id="outputs"></div>
+    <label class="chk">
+      <input type="checkbox" id="safe">
+      Mostrar a zona segura no ícone maskable (círculo de 80%)
+    </label>
+    <div id="status"></div>
+  </section>
+
+  <button class="btn block" id="btn-all">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M6.5 10.5L12 16l5.5-5.5M4.5 20h15"/></svg>
+    Baixar os 4 ícones
+  </button>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Como aplicar</h2>
+    <ol>
+      <li>Baixe os 4 PNGs — os nomes já saem corretos.</li>
+      <li>No GitHub, substitua na <b>raiz</b> do repositório: <code>icon-180.png</code>,
+          <code>icon-192.png</code>, <code>icon-512.png</code> e <code>icon-maskable-512.png</code>.</li>
+      <li>Após o commit, aguarde ~1 minuto, feche e reabra o app. Se o ícone antigo persistir
+          no atalho instalado, limpe os dados do site no Chrome e reinstale.</li>
+    </ol>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+/* ============ paleta ============ */
+const NAVY  = '#0C2D4D';  // fundo
+const WHITE = '#FFFFFF';  // traços da casa, sol e árvore
+const SKY   = '#7FB2E2';  // pontinhos azuis da árvore
+const GRASS = '#93A2B3';  // tufos de grama
+
+/* ============ os 4 ícones exigidos pelo manifest ============ */
+const ICONS = [
+  { file: 'icon-180.png',          size: 180, maskable: false },
+  { file: 'icon-192.png',          size: 192, maskable: false },
+  { file: 'icon-512.png',          size: 512, maskable: false },
+  { file: 'icon-maskable-512.png', size: 512, maskable: true  }
+];
+
+/* ============ desenha a arte em um espaço de projeto 512×512 ============ */
+function drawArtwork(ctx, size, contentScale){
+  const k = (size / 512) * (contentScale || 1);
+  ctx.save();
+  ctx.translate(size / 2, size / 2);
+  ctx.scale(k, k);
+  ctx.translate(-256, -256);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  ctx.strokeStyle = WHITE;
+
+  /* --- telhado --- */
+  ctx.lineWidth = 11;
+  ctx.beginPath();
+  ctx.moveTo(140, 262); ctx.lineTo(237, 187); ctx.lineTo(331, 262);
+  ctx.stroke();
+
+  /* --- paredes --- */
+  ctx.beginPath();
+  ctx.moveTo(163, 252); ctx.lineTo(163, 347);
+  ctx.lineTo(297, 347); ctx.lineTo(297, 252);
+  ctx.stroke();
+
+  /* --- porta em arco --- */
+  ctx.lineWidth = 10;
+  ctx.beginPath();
+  ctx.moveTo(208, 347);
+  ctx.lineTo(208, 310);
+  ctx.quadraticCurveTo(208, 290, 226, 290);
+  ctx.quadraticCurveTo(244, 290, 244, 310);
+  ctx.lineTo(244, 347);
+  ctx.stroke();
+
+  /* --- janela com 4 panos --- */
+  ctx.lineWidth = 8;
+  ctx.strokeRect(256, 288, 34, 34);
+  ctx.beginPath();
+  ctx.moveTo(273, 288); ctx.lineTo(273, 322);
+  ctx.moveTo(256, 305); ctx.lineTo(290, 305);
+  ctx.stroke();
+
+  /* --- chaminé + fumaça --- */
+  ctx.lineWidth = 10;
+  ctx.beginPath();
+  ctx.moveTo(268, 214); ctx.lineTo(268, 176);
+  ctx.lineTo(291, 176); ctx.lineTo(291, 230);
+  ctx.stroke();
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(258, 162);
+  ctx.bezierCurveTo(246, 150, 262, 140, 252, 124);
+  ctx.stroke();
+
+  /* --- sol com 8 raios --- */
+  ctx.lineWidth = 10;
+  ctx.beginPath(); ctx.arc(377, 135, 21, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 9;
+  for (let i = 0; i < 8; i++){
+    const a = i * Math.PI / 4, c = Math.cos(a), s = Math.sin(a);
+    ctx.beginPath();
+    ctx.moveTo(377 + c * 33, 135 + s * 33);
+    ctx.lineTo(377 + c * 47, 135 + s * 47);
+    ctx.stroke();
+  }
+
+  /* --- árvore com pontinhos azuis --- */
+  ctx.lineWidth = 10;
+  ctx.beginPath(); ctx.arc(369, 251, 45, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(369, 296); ctx.lineTo(369, 347); ctx.stroke();
+
+  ctx.fillStyle = SKY;
+  [[355, 239], [382, 252], [362, 270]].forEach(([x, y]) => {
+    ctx.beginPath(); ctx.arc(x, y, 7.5, 0, Math.PI * 2); ctx.fill();
+  });
+
+  /* --- tufos de grama --- */
+  ctx.strokeStyle = GRASS;
+  ctx.lineWidth = 6.5;
+  [[138, 351], [174, 351], [254, 353], [317, 351], [388, 351]].forEach(([x, y]) => {
+    ctx.beginPath(); ctx.arc(x - 6, y, 7, Math.PI, 0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x + 6, y, 7, Math.PI, 0); ctx.stroke();
+  });
+
+  ctx.restore();
+}
+
+/* Pinta um canvas completo: fundo + arte + (opcional) zona segura */
+function paintIcon(canvas, icon, safeZone){
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, icon.size, icon.size);
+  ctx.fillStyle = NAVY;
+  ctx.fillRect(0, 0, icon.size, icon.size);
+  /* maskable: arte reduzida p/ caber no círculo de 80% exigido pelos launchers */
+  drawArtwork(ctx, icon.size, icon.maskable ? 0.78 : 1);
+
+  if (safeZone && icon.maskable){
+    ctx.save();
+    ctx.strokeStyle = '#E5484D';
+    ctx.lineWidth = Math.max(2, icon.size * 0.012);
+    ctx.setLineDash([icon.size * 0.03, icon.size * 0.02]);
+    ctx.beginPath();
+    ctx.arc(icon.size / 2, icon.size / 2, icon.size * 0.4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* ============ download ============ */
+function downloadCanvas(canvas, filename){
+  return new Promise(resolve => {
+    canvas.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => { URL.revokeObjectURL(a.href); resolve(); }, 800);
+    }, 'image/png');
+  });
+}
+
+async function downloadAll(){
+  const status = document.getElementById('status');
+  status.textContent = 'Gerando os 4 PNGs…';
+  for (const icon of ICONS){
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = icon.size;
+    paintIcon(cv, icon, false); // sempre limpo, sem overlay
+    await downloadCanvas(cv, icon.file);
+  }
+  status.innerHTML = '<span class="ok">Pronto! Confira a barra de downloads.</span> ' +
+    'Se o navegador baixar apenas o primeiro, use os botões individuais.';
+}
+
+/* ============ montagem da tela ============ */
+function buildOutputs(){
+  const safe = document.getElementById('safe').checked;
+  const wrap = document.getElementById('outputs');
+  wrap.innerHTML = '';
+
+  ICONS.forEach(icon => {
+    const div = document.createElement('div');
+    div.className = 'out';
+
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = icon.size;
+    paintIcon(cv, icon, safe);
+
+    const b = document.createElement('b');
+    b.textContent = icon.file;
+    const s = document.createElement('span');
+    s.textContent = icon.size + '×' + icon.size + (icon.maskable ? ' · maskable' : '');
+
+    const btn = document.createElement('button');
+    btn.className = 'btn small block';
+    btn.textContent = 'Baixar PNG';
+    btn.addEventListener('click', () => {
+      const dl = document.createElement('canvas');
+      dl.width = dl.height = icon.size;
+      paintIcon(dl, icon, false);
+      downloadCanvas(dl, icon.file);
+    });
+
+    div.append(cv, b, s, btn);
+    wrap.appendChild(div);
+  });
+}
+
+paintIcon(document.getElementById('big'), { size: 512, maskable: false }, false);
+buildOutputs();
+document.getElementById('safe').addEventListener('change', buildOutputs);
+document.getElementById('btn-all').addEventListener('click', downloadAll);
+</script>
+</body>
+  </html>
