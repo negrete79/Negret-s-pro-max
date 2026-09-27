@@ -548,4 +548,264 @@ function bindNew(){
 
   $('#os-client').addEventListener('input', e => { State.draft.client = e.target.value; persistDraft(); });
   $('#os-client').addEventListener('keydown', e => { if (e.key === 'Enter') $('#os-date').focus(); });
-  $('#os-da
+  $('#os-date').addEventListener('change', e => { State.draft.date = e.target.value; persistDraft(); });
+}
+
+/* concluir ordem */
+function bindFinish(){
+  $('#btn-finish').addEventListener('click', openFinish);
+  $('#finish-cancel').addEventListener('click', () => $('#finish-modal').classList.remove('open'));
+  $('#finish-modal').addEventListener('click', e => { if (e.target.id === 'finish-modal') $('#finish-modal').classList.remove('open'); });
+  $('#finish-confirm').addEventListener('click', concludeOrder);
+
+  $('#success-new').addEventListener('click', () => { $('#success-modal').classList.remove('open'); go('new'); });
+  $('#success-history').addEventListener('click', () => { $('#success-modal').classList.remove('open'); go('history'); });
+}
+
+function openFinish(){
+  const d = State.draft;
+  if (!d.client.trim()) {
+    Toast.show('Informe o nome do cliente.', 'error');
+    $('#os-client').focus();
+    return;
+  }
+  const inc = d.modules.filter(m => m.included);
+  if (!inc.length) { Toast.show('Ative pelo menos um módulo de serviço.', 'error'); return; }
+
+  const tasksDone = inc.reduce((s, m) => s + m.tasks.filter(t => t.done).length, 0);
+  const tasksAll  = inc.reduce((s, m) => s + m.tasks.length, 0);
+  const photos    = inc.reduce((s, m) => s + m.photos.before.length + m.photos.after.length, 0);
+
+  $('#finish-summary').innerHTML = `
+    <div><dt>Cliente</dt><dd>${esc(d.client.trim())}</dd></div>
+    <div><dt>Data</dt><dd>${fmtDate(d.date)}</dd></div>
+    <div><dt>Serviços</dt><dd>${inc.length} módulo${inc.length === 1 ? '' : 's'}</dd></div>
+    <div><dt>Tarefas</dt><dd>${tasksDone} de ${tasksAll} concluídas</dd></div>
+    <div><dt>Fotos no app</dt><dd>${photos} registro${photos === 1 ? '' : 's'} Antes/Depois</dd></div>
+    <div><dt>Total</dt><dd class="sum-total">${fmtMoney(updateTotal())}</dd></div>`;
+  $('#finish-modal').classList.add('open');
+}
+
+function concludeOrder(){
+  const d = State.draft;
+  const inc = d.modules.filter(m => m.included);
+  const photos = inc.reduce((s, m) => s + m.photos.before.length + m.photos.after.length, 0);
+
+  const order = {
+    id: uid(),
+    number: DB.nextOrderNumber(),
+    client: d.client.trim(),
+    date: d.date || todayISO(),
+    createdAt: new Date().toISOString(),
+    total: inc.reduce((s, m) => s + (Number(m.price) || 0), 0),
+    modules: inc.map(m => ({
+      name: m.name, price: m.price, included: true,
+      tasks: m.tasks.map(t => ({ ...t })),
+      photos: { before: [...m.photos.before], after: [...m.photos.after] }
+    })),
+    photosCount: photos,
+    photosDropped: false,
+    signature: d.signature,
+    sigRatio: d.sigRatio,
+    pdf: null
+  };
+
+  $('#finish-modal').classList.remove('open');
+  State.orders.unshift(order);
+
+  try {
+    DB.saveOrders(State.orders);
+    DB.clearDraft();
+    finishAfterSave(order);
+  } catch (e) {
+    State.orders.shift();
+    Confirm.open({
+      title: 'Armazenamento cheio',
+      message: 'As fotos desta ordem não couberam no armazenamento local. Deseja concluir mantendo o PDF, os valores e a assinatura — apenas sem as fotos?',
+      yes: 'Concluir sem as fotos',
+      danger: true,
+      onYes(){
+        order.modules.forEach(m => { m.photos = { before: [], after: [] }; });
+        order.photosCount = 0;
+        order.photosDropped = true;
+        State.orders.unshift(order);
+        try { DB.saveOrders(State.orders); DB.clearDraft(); }
+        catch (e2) { Toast.show('Não foi possível salvar no histórico.', 'error'); }
+        finishAfterSave(order);
+      }
+    });
+  }
+}
+
+async function finishAfterSave(order){
+  buildDraft();
+  renderNew();
+
+  $('#success-title').textContent = `Ordem #${pad4(order.number)} concluída`;
+  $('#success-status').textContent = 'Emitindo PDF leve (sem fotos)…';
+  $('#success-modal').classList.add('open');
+
+  const res = await Report.emit(order);
+  if (res.ok) {
+    $('#success-status').textContent = 'PDF gerado: ' + res.file;
+    State.orders = DB.getOrders();
+  } else {
+    $('#success-status').textContent = 'Ordem salva no histórico, mas o PDF não foi emitido: ' + res.error;
+  }
+}
+
+/* ================= HISTÓRICO ================= */
+function renderHistory(){
+  $('#orders-list').innerHTML = State.orders.length
+    ? State.orders.map(orderDetail).join('')
+    : '<div class="card pad empty">Sem ordens no histórico ainda.</div>';
+}
+
+function orderDetail(o){
+  return `
+  <article class="card order" id="order-${o.id}">
+    <button class="order-head" data-toggle-order="${o.id}">
+      <span class="order-num">#${pad4(o.number)}</span>
+      <span class="order-main"><b>${esc(o.client)}</b><span>${fmtDate(o.date)} · ${(o.modules || []).length} serviço${(o.modules || []).length === 1 ? '' : 's'}</span></span>
+      <span class="order-total">${fmtMoney(o.total)}</span>
+      ${I.chevron(18)}
+    </button>
+    <div class="order-body" hidden>
+      ${o.photosDropped ? '<p class="warn-note">Fotos não arquivadas nesta ordem por falta de espaço no armazenamento.</p>' : ''}
+      ${(o.modules || []).map(m => {
+        const hasPhotos = (m.photos?.before?.length || 0) + (m.photos?.after?.length || 0) > 0;
+        const doneTasks = (m.tasks || []).filter(t => t.done).map(t => esc(t.label)).join(' · ');
+        return `
+        <div class="omod">
+          <div class="omod-head"><b>${esc(m.name)}</b><span>${fmtMoney(m.price)}</span></div>
+          ${doneTasks ? `<p class="omod-tasks">${doneTasks}</p>` : ''}
+          ${hasPhotos ? `
+            <div class="photo-groups">
+              ${histPhotos(m.photos.before, 'Antes')}
+              ${histPhotos(m.photos.after, 'Depois')}
+            </div>` : ''}
+        </div>`;
+      }).join('')}
+      ${o.signature ? `<p class="sig-note">${I.check(14)} Assinatura do cliente registrada no PDF.</p>` : ''}
+      <div class="order-actions">
+        <button class="btn btn-ghost btn-grow" data-pdf-order="${o.id}">${I.file(18)} Emitir PDF</button>
+        <button class="btn btn-danger" data-del-order="${o.id}">${I.trash(18)} Excluir</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+function histPhotos(arr, label){
+  if (!arr || !arr.length) return '';
+  return `
+  <div class="photo-group">
+    <span class="ph-label">${label}</span>
+    <div class="thumbs">
+      ${arr.map(src => `<span class="thumb"><img src="${src}" alt="Registro ${label}" data-lightbox></span>`).join('')}
+    </div>
+  </div>`;
+}
+
+function bindHistory(){
+  $('#orders-list').addEventListener('click', e => {
+    if (e.target.closest('img[data-lightbox]')) return;
+
+    const tog = e.target.closest('[data-toggle-order]');
+    if (tog) {
+      const body = tog.nextElementSibling;
+      body.hidden = !body.hidden;
+      tog.classList.toggle('open', !body.hidden);
+      return;
+    }
+    const pdf = e.target.closest('[data-pdf-order]');
+    if (pdf) {
+      Toast.show('Emitindo PDF…');
+      Report.reemit(pdf.dataset.pdfOrder).then(res => {
+        Toast.show(res.ok ? 'PDF gerado com sucesso.' : 'Falha ao gerar o PDF: ' + res.error, res.ok ? 'ok' : 'error');
+      });
+      return;
+    }
+    const del = e.target.closest('[data-del-order]');
+    if (del) {
+      const id = del.dataset.delOrder;
+      const o = State.orders.find(x => x.id === id);
+      if (!o) return;
+      Confirm.open({
+        title: `Excluir ordem #${pad4(o.number)}?`,
+        message: 'A ordem e suas fotos salvas no app serão apagadas definitivamente. O PDF já emitido não é afetado.',
+        yes: 'Excluir ordem',
+        danger: true,
+        onYes(){
+          State.orders = State.orders.filter(x => x.id !== id);
+          try { DB.saveOrders(State.orders); } catch (err) { Toast.show('Falha ao salvar.', 'error'); }
+          renderHistory();
+          Toast.show('Ordem excluída do histórico.');
+        }
+      });
+    }
+  });
+}
+
+/* shell, lightbox e boot */
+function bindShell(){
+  $$('.tabbar button').forEach(b => b.addEventListener('click', () => go(b.dataset.view)));
+  $('#btn-hero-new').addEventListener('click', () => go('new'));
+
+  document.addEventListener('click', e => {
+    const g = e.target.closest('[data-go]');
+    if (g) go(g.dataset.go);
+  });
+
+  $('#home-recent').addEventListener('click', e => {
+    const row = e.target.closest('[data-open-order]');
+    if (!row) return;
+    go('history');
+    requestAnimationFrame(() => {
+      const art = document.getElementById('order-' + row.dataset.openOrder);
+      if (art) {
+        art.querySelector('.order-body').hidden = false;
+        art.querySelector('.order-head').classList.add('open');
+        setTimeout(() => art.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+      }
+    });
+  });
+}
+
+function bindLightbox(){
+  document.addEventListener('click', e => {
+    const img = e.target.closest('img[data-lightbox]');
+    if (img) { $('#lightbox img').src = img.src; $('#lightbox').classList.add('open'); return; }
+    if (e.target.closest('#lightbox')) $('#lightbox').classList.remove('open');
+  });
+}
+
+function boot(){
+  DB.ensureSeed();
+  State.services = DB.getServices();
+  State.orders = DB.getOrders();
+
+  const saved = DB.getDraft();
+  State.draft = (saved && Array.isArray(saved.modules)) ? saved : null;
+  if (!State.draft) buildDraft();
+  syncDraft();
+
+  const d = new Date();
+  $('#top-date').textContent = `${d.getDate()} de ${MONTHS[d.getMonth()]}`;
+
+  bindShell();
+  bindServices();
+  bindNew();
+  bindFinish();
+  bindHistory();
+  bindSignature();
+  Confirm.bind();
+  bindLightbox();
+
+  go('home');
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+}
+
+document.addEventListener('DOMContentLoaded', boot);
