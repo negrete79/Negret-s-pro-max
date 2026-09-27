@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<!-- CSS separado: tenta os 3 caminhos, usa o que existir -->
+<!-- CSS: acha em css/style.css, css/styles.css ou style.css (raiz) -->
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/styles.css">
 <link rel="stylesheet" href="style.css">
@@ -24,7 +24,6 @@
 </head>
 <body>
 
-<!-- ================= TOPO ================= -->
 <header class="topbar">
   <div class="brand">
     <div class="brand-badge">N</div>
@@ -38,7 +37,6 @@
 
 <main id="app">
 
-  <!-- ================ INÍCIO ================ -->
   <section class="view active" id="view-home">
     <div class="hero">
       <div class="hero-top">
@@ -71,7 +69,6 @@
     <div id="home-services" class="card list"><p class="pad empty">Carregando serviços…</p></div>
   </section>
 
-  <!-- ================ NOVA ORDEM ================ -->
   <section class="view" id="view-new">
     <h2 class="view-title">Nova Ordem de Serviço</h2>
 
@@ -102,7 +99,6 @@
     </div>
   </section>
 
-  <!-- ================ GERENCIAR SERVIÇOS ================ -->
   <section class="view" id="view-services">
     <div class="view-head">
       <h2 class="view-title">Gerenciar Serviços</h2>
@@ -125,7 +121,6 @@
     </div>
   </section>
 
-  <!-- ================ HISTÓRICO ================ -->
   <section class="view" id="view-history">
     <h2 class="view-title">Histórico de Ordens</h2>
     <div id="orders-list" class="stack"><div class="card pad empty">Carregando…</div></div>
@@ -133,7 +128,6 @@
 
 </main>
 
-<!-- ================= NAVEGAÇÃO ================= -->
 <nav class="tabbar">
   <button data-view="home" class="active">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5L12 3l8.5 7.5"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5"/></svg>
@@ -153,7 +147,6 @@
   </button>
 </nav>
 
-<!-- ================= CONFIRMAÇÃO ================= -->
 <div class="modal" id="confirm-modal">
   <div class="modal-card">
     <h3 id="confirm-title"></h3>
@@ -165,7 +158,6 @@
   </div>
 </div>
 
-<!-- ================= RESUMO DE CONCLUSÃO ================= -->
 <div class="modal" id="finish-modal">
   <div class="modal-card">
     <h3>Concluir ordem de serviço</h3>
@@ -179,7 +171,6 @@
   </div>
 </div>
 
-<!-- ================= SUCESSO ================= -->
 <div class="modal" id="success-modal">
   <div class="modal-card center">
     <svg class="check-wrap" viewBox="0 0 76 76" fill="none" aria-hidden="true">
@@ -195,71 +186,77 @@
   </div>
 </div>
 
-<!-- ================= LIGHTBOX DE FOTOS ================= -->
 <div class="lightbox" id="lightbox"><img alt="Registro fotográfico"></div>
-
 <div class="toast" id="toast" role="status"></div>
 
-<script src="js/db.js"></script>
-<script src="js/pdf.js"></script>
-<script src="js/report.js"></script>
-<script src="js/app.js"></script>
-
+<!-- =====================================================
+     CARREGADOR INTELIGENTE
+     Procura cada .js em js/ e, se não achar, na raiz.
+     Carrega na ordem certa e avisa se algum faltar.
+     ===================================================== -->
 <script>
-/* =====================================================
-   REDE DE SEGURANÇA (sempre por último, antes do </body>)
-   1) Menus funcionam mesmo se algum js/ falhar
-   2) Erros de JS aparecem numa faixa vermelha no topo
-   Não interfere quando o app.js carrega normalmente.
-   ===================================================== */
 (function(){
   'use strict';
 
-  /* --- 1) navegação garantida --- */
-  function navBasica(){
-    var btns = document.querySelectorAll('.tabbar button');
-    btns.forEach(function(b){
-      b.addEventListener('click', function(){
-        var v = b.dataset.view;
-        document.querySelectorAll('.view').forEach(function(s){
-          s.classList.toggle('active', s.id === 'view-' + v);
-        });
-        btns.forEach(function(x){ x.classList.toggle('active', x === b); });
-        window.scrollTo({ top: 0 });
-      });
-    });
-  }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', navBasica);
-  } else {
-    navBasica();
-  }
-
-  /* --- 2) faixa de erro visível --- */
-  function mostrarErro(msg){
-    var d = document.createElement('div');
-    d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;' +
-      'background:#B3261E;color:#fff;font:12px/1.5 monospace;padding:8px 10px;' +
-      'max-height:40vh;overflow:auto;white-space:pre-wrap';
-    d.textContent = 'ERRO JS: ' + msg;
-    document.body.appendChild(d);
+  /* ---- faixa de erros ---- */
+  function faixa(msg){
+    var d = document.getElementById('err-bar');
+    if (!d){
+      d = document.createElement('div');
+      d.id = 'err-bar';
+      d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#B3261E;color:#fff;font:12px/1.5 monospace;padding:8px 10px;max-height:45vh;overflow:auto;white-space:pre-wrap';
+      document.body.appendChild(d);
+    }
+    d.textContent = msg;
   }
   window.addEventListener('error', function(e){
     var arq = (e.filename || '').split('/').pop();
-    mostrarErro((e.message || 'desconhecido') + ' @ ' + arq + ':' + (e.lineno || '?'));
-  });
-  window.addEventListener('unhandledrejection', function(e){
-    mostrarErro('Promise: ' + ((e.reason && e.reason.message) || e.reason));
+    faixa('ERRO JS: ' + (e.message || '?') + ' @ ' + arq + ':' + (e.lineno || '?'));
   });
 
-  /* --- 3) se o app.js não rodou, avisa de forma discreta --- */
+  /* ---- procura o arquivo em js/ e depois na raiz ---- */
+  var NOMES = ['db.js', 'pdf.js', 'report.js', 'app.js'];
+
+  function existe(url){
+    return fetch(url, { cache: 'no-store' }).then(function(r){
+      if (!r.ok) return null;
+      return r.text().then(function(t){ return t.trim().length ? url : null; });
+    }).catch(function(){ return null; });
+  }
+
+  function carregar(i){
+    if (i >= NOMES.length) return Promise.resolve();
+    return existe('js/' + NOMES[i]).then(function(url){
+      return new Promise(function(res){
+        var s = document.createElement('script');
+        s.src = url || NOMES[i];               /* fallback: raiz */
+        s.onload  = function(){ res(); };
+        s.onerror = function(){ res(); };
+        document.head.appendChild(s);
+      }).then(function(){ return carregar(i + 1); });
+    });
+  }
+  carregar(0);
+
+  /* ---- se o app não iniciar, mostra onde cada arquivo está (ou não) ---- */
   window.addEventListener('load', function(){
     setTimeout(function(){
-      var data = document.getElementById('top-date');
-      if (data && !data.textContent) {
-        mostrarErro('js/app.js não executou. Confira se o arquivo existe (js/app.js) e se foi colado completo até a última linha.');
-      }
-    }, 1500);
+      var ok = document.getElementById('top-date') && document.getElementById('top-date').textContent;
+      if (ok) return;
+      Promise.all(NOMES.map(function(n){
+        return Promise.all([
+          existe('js/' + n),
+          existe(n)
+        ]).then(function(a){
+          if (a[0]) return n + ': encontrado em js/' + n + ' (não executou)';
+          if (a[1]) return n + ': está na RAIZ (funcionará)';
+          return n + ': NÃO EXISTE no site — precisa criar no GitHub';
+        });
+      })).then(function(linhas){
+        faixa('O app não iniciou. Relatório dos arquivos:\n' + linhas.join('\n') +
+              '\n\nSe algum disser NÃO EXISTE: GitHub → Add file → Create new file → cole o código.');
+      });
+    }, 3000);
   });
 })();
 </script>
