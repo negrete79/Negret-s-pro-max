@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C2D4D">
+<title>NEGRET'S PRO MASTER</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- CSS: carrega o que existir (pasta css ou raiz). Todos separados, sem embutir. -->
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="style.css">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ================= TOPO ================= -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-badge">N</div>
+    <div class="brand-text">
+      <span class="brand-name">NEGRET'S</span>
+      <span class="brand-sub">PRO&nbsp;MASTER</span>
+    </div>
+  </div>
+  <span class="top-date" id="top-date"></span>
+</header>
+
+<main id="app">
+
+  <!-- ================ INÍCIO ================ -->
+  <section class="view" id="view-home">
+    <div class="hero">
+      <div class="hero-top">
+        <span class="hero-kicker">Painel do dia</span>
+        <span class="hero-next" id="hero-next">Próxima ordem #0001</span>
+      </div>
+      <h1>Registre, conclua e entregue o PDF da sua ordem.</h1>
+      <button class="btn btn-light" id="btn-hero-new">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Nova Ordem de Serviço
+      </button>
+    </div>
+
+    <div class="stats card">
+      <div><b id="stat-revenue">R$ 0,00</b><span>faturado no mês</span></div>
+      <div><b id="stat-orders">0</b><span>ordens no mês</span></div>
+      <div><b id="stat-photos">0</b><span>fotos arquivadas</span></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Últimas ordens</h2>
+      <button class="link-btn" data-go="history">Ver histórico</button>
+    </div>
+    <div id="home-recent" class="stack"></div>
+
+    <div class="section-head">
+      <h2>Serviços cadastrados</h2>
+      <button class="link-btn" data-go="services">Gerenciar</button>
+    </div>
+    <div id="home-services" class="card list"></div>
+  </section>
+
+  <!-- ================ NOVA ORDEM ================ -->
+  <section class="view" id="view-new">
+    <h2 class="view-title">Nova Ordem de Serviço</h2>
+
+    <div class="card pad os-meta">
+      <label class="field"><span>Cliente</span><input id="os-client" placeholder="Nome do cliente" autocomplete="off"></label>
+      <label class="field"><span>Data</span><input type="date" id="os-date"></label>
+    </div>
+
+    <p class="hint">Ative os módulos executados, toque nas tarefas para marcá-las e registre as fotos Antes/Depois.</p>
+
+    <div id="os-modules" class="stack"></div>
+
+    <div class="card pad sig-card">
+      <div class="sig-head">
+        <div><b>Assinatura do cliente</b><span>Opcional — desenhada na tela e anexada ao PDF</span></div>
+        <button class="link-btn" id="sig-clear">Limpar</button>
+      </div>
+      <canvas id="sig-canvas"></canvas>
+      <p class="sig-hint" id="sig-hint">Assine acima com o dedo ou o mouse</p>
+    </div>
+
+    <div class="finish-bar">
+      <div><span>Total da ordem</span><b id="finish-total">R$ 0,00</b></div>
+      <button class="btn btn-light" id="btn-finish">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        Concluir
+      </button>
+    </div>
+  </section>
+
+  <!-- ================ GERENCIAR SERVIÇOS ================ -->
+  <section class="view" id="view-services">
+    <div class="view-head">
+      <h2 class="view-title">Gerenciar Serviços</h2>
+      <button class="btn btn-primary" id="btn-add-service">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        Adicionar Novo Serviço
+      </button>
+    </div>
+
+    <div class="card list" id="services-list"></div>
+
+    <div class="card pad form-card" id="service-form-card">
+      <h3 id="service-form-title">Novo serviço</h3>
+      <label class="field"><span>Nome do serviço</span><input id="svc-name" placeholder="Ex.: Lavagem de calçada" maxlength="60"></label>
+      <label class="field"><span>Preço R$</span><input id="svc-price" inputmode="decimal" placeholder="0,00"></label>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="btn-cancel-service" hidden>Cancelar</button>
+        <button class="btn btn-primary btn-grow" id="btn-save-service">Salvar Novo Serviço</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================ HISTÓRICO ================ -->
+  <section class="view" id="view-history">
+    <h2 class="view-title">Histórico de Ordens</h2>
+    <div id="orders-list" class="stack"></div>
+  </section>
+
+</main>
+
+<!-- ================= NAVEGAÇÃO ================= -->
+<nav class="tabbar">
+  <button data-view="home" class="active">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5L12 3l8.5 7.5"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5"/></svg>
+    <span>Início</span>
+  </button>
+  <button data-view="new">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="17" rx="3"/><path d="M9 2.5h6v4H9z"/><path d="M12 11v6M9 14h6"/></svg>
+    <span>Nova OS</span>
+  </button>
+  <button data-view="services">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11V4.5a1 1 0 0 1 1-1H11l9.5 9.5-7.5 7.5L3.5 11z"/><circle cx="8" cy="8" r="1.4"/></svg>
+    <span>Serviços</span>
+  </button>
+  <button data-view="history">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2.5"/></svg>
+    <span>Histórico</span>
+  </button>
+</nav>
+
+<!-- ================= CONFIRMAÇÃO ================= -->
+<div class="modal" id="confirm-modal">
+  <div class="modal-card">
+    <h3 id="confirm-title"></h3>
+    <p class="modal-sub" id="confirm-msg"></p>
+    <div class="form-actions">
+      <button class="btn btn-ghost btn-grow" id="confirm-no">Cancelar</button>
+      <button class="btn btn-primary btn-grow" id="confirm-yes">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= RESUMO DE CONCLUSÃO ================= -->
+<div class="modal" id="finish-modal">
+  <div class="modal-card">
+    <h3>Concluir ordem de serviço</h3>
+    <p class="modal-sub">Confira o resumo antes de emitir o PDF.</p>
+    <dl class="sum" id="finish-summary"></dl>
+    <p class="modal-note">O PDF leve (sem fotos) é gerado automaticamente. As fotos Antes/Depois ficam salvas apenas no app, no histórico.</p>
+    <div class="form-actions">
+      <button class="btn btn-ghost btn-grow" id="finish-cancel">Voltar</button>
+      <button class="btn btn-primary btn-grow" id="finish-confirm">Concluir e emitir PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SUCESSO ================= -->
+<div class="modal" id="success-modal">
+  <div class="modal-card center">
+    <svg class="check-wrap" viewBox="0 0 76 76" fill="none" aria-hidden="true">
+      <circle cx="38" cy="38" r="34" stroke="#1B7A43" stroke-width="4"/>
+      <path d="M23 39.5l10 10L53 30" stroke="#1B7A43" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h3 id="success-title">Ordem concluída</h3>
+    <p class="modal-sub" id="success-status">Emitindo PDF…</p>
+    <div class="form-actions">
+      <button class="btn btn-ghost btn-grow" id="success-new">Nova ordem</button>
+      <button class="btn btn-primary btn-grow" id="success-history">Ver histórico</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= LIGHTBOX DE FOTOS ================= -->
+<div class="lightbox" id="lightbox"><img alt="Registro fotográfico"></div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="js/db.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/report.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
